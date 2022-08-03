@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:untitled/core/service/firebase_service.dart';
 
+import '../../../cache/user_cache_manager.dart';
 import '../../../core/model/student.dart';
 import '../../../core/model/user.dart';
 
@@ -13,20 +14,61 @@ class FireHomeView extends StatefulWidget {
 
 class _FireHomeViewState extends State<FireHomeView> {
 
+  List<User>? _items;
+
+  late final ICacheManager<User> cacheManager;
   FirebaseService? service;
+  final _dummyString = 'https://i.picsum.photos/id/866/200/300.jpg?hmac=rcadCENKh4rD6MAp6V_ma-AyWv641M4iiOpe1RyFHeI';
+
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
     service = FirebaseService();
+    cacheManager = UserCacheManager('userCacheBox');
+    fetchDatas();
+
+  }
+
+
+  Future<void> fetchDatas() async {
+    await cacheManager.init();
+    if (cacheManager.getValues()?.isNotEmpty ?? false) {
+      _items = cacheManager.getValues();
+    } else {
+      _items = await service?.getUsers();
+    }
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
-      body: studentFutureBuilder(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          cacheManager.getValues();
+          if (_items?.isNotEmpty ?? false) {
+            await cacheManager.addItems(_items!);
+            print("Ekleme yapıldı");
+          }
+        },
+      ),
+      body: (_items?.isNotEmpty ?? false)
+          ? ListView.builder(
+        itemCount: _items?.length,
+        itemBuilder: (context, index) {
+          return Card(
+            child: ListTile(
+              leading: CircleAvatar(backgroundImage: NetworkImage(_dummyString)),
+              title: Text('${_items?[index].name}'),
+            ),
+          );
+        },
+      )
+          : const CircularProgressIndicator(),
+
     );
   }
 
@@ -57,7 +99,7 @@ class _FireHomeViewState extends State<FireHomeView> {
               return _listUser(snapshot.data!);
             else
               return _notFoundWidget;
-              break;
+            break;
           default:
             return _waitingWidget;
 
